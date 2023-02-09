@@ -1,10 +1,12 @@
-setwd("//main.glb.corp.local/ep-hq$/Home/DEF/3/J0521353/Documents/Article_Uncertainty/Codes R V2")
-library(kergp)
+# Importing all required packages and methods 
 source("test_func.R")
 source("Multistart.R")
 source("Sigma_LOO_alpha.R")
 source("CVMSE_nugget.R")
+library(kergp)
 library("mvtnorm")
+
+# Setting seed for numerical experiments
 set.seed(123456) # OK 123, 123456 sigma2=0.01
 
 # Initializing parameters and design of experiment
@@ -17,6 +19,7 @@ d <- 10
 
 inputs <- paste("x", 1L:d, sep = "")
 
+# Introducing correlations in the correlation matrix
 C = diag(d)
 C[1,2] = C[2,1] = 0.9
 C[9,3] = C[3,9] = C[1,6] = C[6,1] = 0.05
@@ -134,8 +137,9 @@ mean(abs(qnorm(1-alpha/2)*sdCV - qnorm(alpha/2)*sdCV))
 sd(abs(qnorm(1-alpha/2)*sdCV - qnorm(alpha/2)*sdCV))
 
 
-######################################## RPIE Method ######################################
+################################## Apply the RPIE method on the MLE solution ################################
 
+# Define a function that update the GLS estimator of hat_beta for a given Covariance function CovModel and nugget effect var_nugget
 betaHat <- function(fit, CovModel, var_nugget, data){
   CovRef <-  CovModel
   coef(CovRef) <- fit$covariance@par
@@ -152,9 +156,10 @@ betaHat <- function(fit, CovModel, var_nugget, data){
   return(beta)
 }
 
-
+## Import the update version of Wasserstein distance, the old version has some computing issues
 source("Wassersteinpar.R")
 
+## Initiate the RPIE method
 CovRef =  CovModel
 fit = fitMLE
 coef(CovRef) <- fit$covariance@par
@@ -163,6 +168,7 @@ m1 <- fit$F %*% betaHat(fit, CovRef, var_nugget, data = dataFit[, 1:d])
 max <- 1e6; min <- 1e-6
 alpha = 0.95
 
+## Define the loss function with respect to the wasserstein distance for each value of lambda
 wasserstein_shift <- function(lambda){
   CovDist <- CovModel
   kergp::coef(CovDist) <- lambda*fit$covariance@par
@@ -207,8 +213,6 @@ GP_quantile_MLE95 <- kergp::gp(formula = y ~ 1, data = dataFit, cov = CovDist, e
 predUpperMLE <- predict(GP_quantile_MLE95, newdata = as.matrix(dataVal[ , inputs]), type = "UK", forceInterpert = TRUE)$mean
 sdUpperMLE <- predict(GP_quantile_MLE95, newdata = as.matrix(dataVal[ , inputs]), type = "UK", forceInterpert = TRUE)$sd
 
-
-
 ## Shifting lambda for wasserstein distance
 alpha = 0.05
 fit = fitMLE
@@ -230,18 +234,6 @@ GP_quantile_MLE5 <- kergp::gp(formula = y ~ 1, data = dataFit, cov = CovDist, es
 predLowerMLE <- predict(GP_quantile_MLE5, newdata = as.matrix(dataVal[ , inputs]), type = "UK")$mean
 sdLowerMLE <- predict(GP_quantile_MLE5, newdata = as.matrix(dataVal[ , inputs]), type = "UK", forceInterpert = TRUE)$sd
 
-
-
-# Evaluating the performance of the MLE P5+P95 model 
-predP95MLE <- predUpperMLE + qnorm(1-alpha/2)*sdUpperMLE
-predP05MLE <- predLowerMLE + qnorm(alpha/2)*sdLowerMLE
-MeanP50MLE <- (predP05MLE + predP95MLE)/2
-
-Q <- data.frame(MLE = 1 - sum((dataVal$y - predMLE)^2)/sum((dataVal$y - mean(dataVal$y ))^2),
-                GP_Mean_MLE = 1 - sum((dataVal$y - MeanP50MLE)^2)/sum((dataVal$y - mean(dataVal$y ))^2),
-                row.names = "Accuracy")
-print(Q)
-
 # Printing the quasi-Gaussian Percentile on training set
 alpha = 0.10
 P_upper_CV = quasi.Gaussian.CV(1-alpha/2, dataFit, GP_quantile_MLE95)
@@ -258,8 +250,7 @@ mean(abs(qnorm(1-alpha/2)*sdUpperMLE - qnorm(alpha/2)*sdLowerMLE))
 sd(abs(qnorm(1-alpha/2)*sdUpperMLE - qnorm(alpha/2)*sdLowerMLE))
 
 
-##################################################################
-
+################################## Apply the RPIE method on the CV-MSE solution ################################
 
 ## Shifting lambda for wasserstein distance
 fit = fitCV
