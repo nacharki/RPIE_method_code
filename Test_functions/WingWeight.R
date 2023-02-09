@@ -1,13 +1,13 @@
-setwd("//main.glb.corp.local/ep-hq$/Home/DEF/3/J0521353/Documents/Article_Uncertainty/Codes R V2")
-library(kergp)
+# Importing all required packages and methods 
 source("test_func.R")
 source("Multistart.R")
 source("Sigma_LOO_alpha.R")
 source("CVMSE_nugget.R")
+library(kergp)
 library("mvtnorm")
+
+# Setting seed for numerical experiments
 set.seed(123456)
-
-
 
 # Initializing parameters and design of experiment
 normalize <- function(x){
@@ -51,9 +51,10 @@ CovModel <- covRadial(inputs = inputs, d = d, k1Fun1 = k1Fun1Matern3_2, cov = "h
 
 ######################################## MLE Estimator ######################################
 
-# Creation of a GP model by Maximum Likelihood Estimator method
+# Creation of a GP model by Maximum Likelihood Estimator method, 
 # fitMLE <- gp(formula = y ~ 1, dataFit, cov = CovModel, estim = TRUE)
 
+# Creation of a GP model by Maximum Likelihood Estimator method, using the sequential approach
 fitMLE <- GP.joint.model(dataFit, CovModel, d)
 
 # Predicting the output for the validation data set : mean and std
@@ -64,8 +65,6 @@ var_nugget = fitMLE$varNoise
 # Evaluation metrics : RMSE and Accuracy score
 QMLE <- 1 - sum((dataVal$y - predMLE)^2)/sum((dataVal$y - mean(dataVal$y))^2)
 print(paste("Accuracy Q2:", QMLE))
-
-
 
 # Printing the quasi-Gaussian Percentile on training set
 alpha = 0.10
