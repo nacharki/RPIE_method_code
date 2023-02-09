@@ -1,3 +1,4 @@
+# Define the Heaviside functions h_delta^plus as described in the paper
 h_plus <- function(x, delta=10e-2){
   if (x>delta) {
     h <- 1
@@ -9,6 +10,7 @@ h_plus <- function(x, delta=10e-2){
   return(h)
 }
 
+# Define the Heaviside function h_delta^minus as described in the paper
 h_minus <- function(x, delta=10e-2){
   if (x>=0) {
     h <- 1
@@ -20,6 +22,7 @@ h_minus <- function(x, delta=10e-2){
   return(h)
 }
 
+# Compute the quasi Gaussian percentile psi_a^(delta) i.e. the number of Leave-One-Out predictions falling below the Gaussian quantile of level a
 quasi.Gaussian.CV <- function(a, dataFit, GP){
   y_pred <- influence(GP)$mean
   sd_pred <- influence(GP)$sd
@@ -33,6 +36,7 @@ quasi.Gaussian.CV <- function(a, dataFit, GP){
   return(psi_a)
 }
 
+# Compute the empirical coverage probability on a validation set dataVal using a GP model
 Coverage.Probability <- function(alpha, dataVal, GP, nugget = FALSE){
   y_pred <- predict(GP, newdata = as.matrix(dataVal[ , inputs]), type = "UK", forceInterp = nugget)$mean
   sd_pred <- predict(GP, newdata = as.matrix(dataVal[ , inputs]), type = "UK", forceInterp = nugget)$sd
@@ -49,32 +53,19 @@ Coverage.Probability <- function(alpha, dataVal, GP, nugget = FALSE){
   return(CP)
 }
 
-score.fun <- function(IC) {
-  score <- 0
-  ktest <- nrow(IC)
-  for (k in 1:ktest) {
-    if ( (IC$y[k] > IC$UpperQ[k]) | ( IC$y[k]  < IC$LowerQ[k]) )  
-      score <- score + 0
-    else
-      score <- score + 1 
-  }
-  score <- score/ktest
-  return(score)
-}
-
-# Fitting GP variance noise by Cross-Validation
-Sigma2_Percent <- function(sigma, alpha, fit, data, CovModel){
-  kergp::coef(CovModel) <- fit$covariance@par
+# Compute the quasi Gaussian percentile psi_a for a given model GP
+Sigma2_Percent <- function(sigma, alpha, GP, data, CovModel){
+  kergp::coef(CovModel) <- GP$covariance@par
   kergp::coef(CovModel)[d+1] <- sigma
   
-  GP <- gp(formula = y ~ 1, data = data, cov = CovModel, estim = FALSE, varNoise = fit$varNoise)
-  percent <- quasi.Gaussian.CV(alpha, data, GP)
+  GPModel <- gp(formula = y ~ 1, data = data, cov = CovModel, estim = FALSE, varNoise = GP$varNoise)
+  percent <- quasi.Gaussian.CV(alpha, data, GPModel)
   percent_alpha <- percent
   return(percent_alpha)
 }
 
 
-# binary search of sigma_min (theta) (OK)
+# Function for finding the minimal sigma2 that satisfies the coverage propability equal to a, for a quantile a>1/2 using binary search
 MinSearch <- function(func = Sigma2_Percent, low, high, fit, data, CovModel, tol = (CovModel$covariance@par[ncol(data)])/100 ) {
   n <- nrow(data)
   k0 <- floor(alpha*n)
@@ -97,7 +88,7 @@ MinSearch <- function(func = Sigma2_Percent, low, high, fit, data, CovModel, tol
   }
 }
 
-# binary search of sigma_min for lower quantiles (theta)
+# Function for finding the minimal sigma2 that satisfies the coverage propability equal to a, for a quantile a>1/2
 MinSearchLow <- function(func = Sigma2_Percent, low, high, fit, data, CovModel, tol = (CovModel$covariance@par[ncol(data)])/100 ) {
   n <- nrow(data)
   k0 <- floor(alpha*n)+1
