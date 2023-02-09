@@ -1,3 +1,5 @@
+################################### CV-MSE Solution with nugget effect ###############################
+# This method allows to compute the CV-MSE solution as described in the paper with a nugget effect
 library(parallel)
 
 nc <- detectCores()
